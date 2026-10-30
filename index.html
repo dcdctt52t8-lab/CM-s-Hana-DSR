@@ -158,6 +158,19 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.1)}
 .nbox{background:var(--card2);border:1px solid var(--bd);border-radius:var(--rs);padding:12px;font-family:var(--mono);font-size:11px;color:var(--mu);line-height:1.9;white-space:pre-wrap}
 .bcopy{width:100%;margin-top:9px;padding:13px;background:var(--pp);border:1.5px solid var(--p);border-radius:var(--rs);color:var(--p);font-family:var(--mono);font-size:12px;font-weight:500;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all .15s}
 .bcopy:active{transform:scale(.98)}
+
+/* 계산 기록 */
+.hsave{width:100%;padding:13px;background:var(--p);border:none;border-radius:var(--rs);color:#fff;font-family:var(--sans);font-size:13px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all .15s}
+.hsave:active{transform:scale(.98)}.hsave:disabled{opacity:.6}
+.hmsg{font-size:11px;color:var(--mu);margin-top:6px;min-height:16px}
+.hlist{display:flex;flex-direction:column;gap:7px;margin-top:10px}
+.hitem{display:flex;align-items:center;gap:9px;padding:10px 11px;background:var(--card2);border:1px solid var(--bd);border-radius:var(--rs);cursor:pointer;-webkit-tap-highlight-color:transparent}
+.hitem:active{background:var(--pp)}
+.hitem .hd{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.hitem .hb{flex:1;min-width:0}
+.hitem .hm{font-size:12px;font-weight:700;font-family:var(--mono)}
+.hitem .hs2{font-size:10px;color:var(--mu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hitem .hx{border:none;background:none;color:var(--mu2);font-size:18px;padding:0 4px;cursor:pointer}
 </style>
 </head>
 <body>
@@ -365,6 +378,19 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.1)}
   <div class="scb">
     <div class="nbox" id="note-box">계산 후 표시됩니다.</div>
     <button class="bcopy" onclick="copyNote()">[ 결과 복사 ]</button>
+  </div>
+</div>
+
+<!-- ⑧ 계산 기록 -->
+<div class="sec">
+  <div class="sch open" onclick="tog(this)">
+    <div class="st"><span class="step-badge">8</span>계산 기록 <span style="font-size:11px;color:var(--mu);font-weight:400;margin-left:4px">최근 10개</span></div><span class="sa">▼</span>
+  </div>
+  <div class="scb open">
+    <button class="hsave" id="h-save" onclick="saveHistory()">현재 조건 저장</button>
+    <div class="hmsg" id="h-msg"></div>
+    <div class="hlist" id="h-list"></div>
+    <div class="hint">이 기기(브라우저)에서 저장한 기록만 보이며, 최근 10개까지 보관됩니다. 기록을 누르면 그 조건으로 다시 계산합니다.</div>
   </div>
 </div>
 
@@ -610,6 +636,7 @@ function calc() {
 
   // Verdict
   const status = dsr>dsrLim?'no':dsr>dsrLim-5?'warn':'ok';
+  lastResult = { dsr: round2(dsr), dti: round2(dti), status };
   const SC={ok:'var(--gn)',warn:'var(--am)',no:'var(--rd)'};
   const SL={ok:`대출 가능 — DSR ${fd(dsr)}% (한도 ${dsrLim}% 이내)`, warn:`DSR 한도 근접 — ${fd(dsr)}% / ${dsrLim}%`, no:`DSR 한도 초과 — ${fd(dsr)}% (한도 ${dsrLim}%)`};
   document.getElementById('hero').style.setProperty('--hc', SC[status]);
@@ -841,7 +868,102 @@ function sp(el,gid) {
 }
 function tog(hd) { hd.classList.toggle('open'); hd.nextElementSibling.classList.toggle('open'); }
 
-renderLoans(); calc();
+/* ────────────────── 계산 기록 (Supabase) ────────────────── */
+const SB_URL = 'https://wkssyjuihhpwxroocats.supabase.co';
+const SB_KEY = 'sb_publishable_kdKUnCCy1gQ1rau3cwFPzg_SkGAeg9C';
+let lastResult = null;
+
+function deviceId() {
+  let id = null;
+  try { id = localStorage.getItem('dsr-device-id'); } catch(e) {}
+  if (!id) {
+    id = crypto.randomUUID();
+    try { localStorage.setItem('dsr-device-id', id); } catch(e) {}
+  }
+  return id;
+}
+const DEVICE = deviceId();
+
+async function rpc(fn, args) {
+  const res = await fetch(`${SB_URL}/rest/v1/rpc/${fn}`, {
+    method:'POST',
+    headers:{ apikey:SB_KEY, 'Content-Type':'application/json' },
+    body: JSON.stringify(args),
+  });
+  if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
+  return res.status===204 ? null : res.json();
+}
+
+const selVal = gid => document.querySelector('#'+gid+' .sel').dataset;
+function getInputs() {
+  return {
+    income: +document.getElementById('income').value,
+    itype:  selVal('itype').val,
+    dsrlim: selVal('dsrlim').val,
+    hown:   selVal('hown').val,
+    term:   +document.getElementById('new-term').value,
+    rate:   +document.getElementById('new-rate').value,
+    repay:  selVal('new-repay').val,
+    stype:  selVal('stype').key,
+    amt:    +document.getElementById('new-amt').value,
+    loans:  loans.map(({type,amt,rate,term,repay})=>({type,amt,rate,term,repay})),
+  };
+}
+function setPill(gid, attr, v) {
+  const el = [...document.querySelectorAll('#'+gid+' .pill')].find(p=>p.dataset[attr]===String(v));
+  if (!el) return;
+  document.querySelectorAll('#'+gid+' .pill').forEach(p=>p.classList.remove('sel'));
+  el.classList.add('sel');
+}
+function applyInputs(i) {
+  document.getElementById('income').value   = i.income;
+  document.getElementById('new-term').value = i.term;
+  document.getElementById('new-rate').value = i.rate;
+  document.getElementById('new-amt').value  = i.amt;
+  setPill('itype','val',i.itype); setPill('dsrlim','val',i.dsrlim); setPill('hown','val',i.hown);
+  setPill('new-repay','val',i.repay); setPill('stype','key',i.stype);
+  loans = (i.loans||[]).map(l=>({ id:++lid, ...l }));
+  renderLoans(); calc();
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+let histRows = [];
+const histMsg = t => { document.getElementById('h-msg').textContent = t; };
+function renderHistory() {
+  const SC={ok:'var(--gn)',warn:'var(--am)',no:'var(--rd)'};
+  document.getElementById('h-list').innerHTML = histRows.length ? histRows.map((r,k) => {
+    const i = r.inputs, d = new Date(r.created_at);
+    const when = `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    return `<div class="hitem" onclick="applyInputs(histRows[${k}].inputs)">
+      <span class="hd" style="background:${SC[r.status]}"></span>
+      <div class="hb">
+        <div class="hm">DSR ${fd(r.dsr)}% · DTI ${fd(r.dti)}%</div>
+        <div class="hs2">${when} · 소득 ${fw(i.income)} · 대출 ${fw(i.amt)} · ${fd(i.rate)}% ${i.term}년${i.loans.length?` · 기존 ${i.loans.length}건`:''}</div>
+      </div>
+      <button class="hx" onclick="event.stopPropagation();delHistory(${r.id})" aria-label="삭제">×</button>
+    </div>`;
+  }).join('') : '<div class="hint" style="margin-top:0">저장된 기록이 없습니다.</div>';
+}
+async function loadHistory() {
+  try { histRows = await rpc('dsr_history_list', { p_device: DEVICE }) || []; renderHistory(); }
+  catch(e) { histMsg('기록을 불러오지 못했습니다.'); console.error(e); }
+}
+async function saveHistory() {
+  if (!lastResult) return;
+  const btn = document.getElementById('h-save');
+  btn.disabled = true; histMsg('저장 중…');
+  try {
+    await rpc('dsr_history_save', { p_device: DEVICE, p_inputs: getInputs(), p_dsr: lastResult.dsr, p_dti: lastResult.dti, p_status: lastResult.status });
+    histMsg('저장했습니다 ✓'); await loadHistory();
+  } catch(e) { histMsg('저장에 실패했습니다. 잠시 후 다시 시도해 주세요.'); console.error(e); }
+  btn.disabled = false;
+}
+async function delHistory(id) {
+  try { await rpc('dsr_history_delete', { p_device: DEVICE, p_id: id }); histRows = histRows.filter(r=>r.id!==id); renderHistory(); histMsg(''); }
+  catch(e) { histMsg('삭제에 실패했습니다.'); console.error(e); }
+}
+
+renderLoans(); calc(); loadHistory();
 </script>
 </body>
 </html>
