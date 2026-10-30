@@ -54,6 +54,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--tx);font-size:14px
 .gauge-seg.mn{background:#0ea5e9}
 .gauge-seg.cd{background:#ec4899}
 .gauge-seg.etc{background:#94a3b8}
+.gauge-seg.mid{background:#f59e0b}
 .gauge-limit{position:absolute;top:0;height:100%;width:2px;background:rgba(0,0,0,.4)}
 .gauge-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--mu2);font-family:var(--mono);margin-top:4px}
 .gauge-legend{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
@@ -114,7 +115,7 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.1)}
 .lc-tag{font-size:10px;font-family:var(--mono);padding:3px 8px;border-radius:4px;font-weight:600}
 .t-jd{background:#d5f5ef;color:#007a74}.t-cr{background:#ede9fe;color:#7c3aed}
 .t-mn{background:#e0f2fe;color:#0284c7}.t-cd{background:#fce7f3;color:#db2777}
-.t-jd2{background:#c6efe7;color:#006e69}
+.t-jd2{background:#c6efe7;color:#006e69}.t-mid{background:#fef3c7;color:#b45309}
 .lc-result{font-family:var(--mono);font-size:11px;color:var(--p2);background:var(--pp);border-radius:6px;padding:6px 10px;margin-left:auto;white-space:nowrap}
 .lr{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:9px}
 .lr.triple{grid-template-columns:1fr 1fr 1fr}
@@ -158,6 +159,19 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.1)}
 .nbox{background:var(--card2);border:1px solid var(--bd);border-radius:var(--rs);padding:12px;font-family:var(--mono);font-size:11px;color:var(--mu);line-height:1.9;white-space:pre-wrap}
 .bcopy{width:100%;margin-top:9px;padding:13px;background:var(--pp);border:1.5px solid var(--p);border-radius:var(--rs);color:var(--p);font-family:var(--mono);font-size:12px;font-weight:500;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all .15s}
 .bcopy:active{transform:scale(.98)}
+
+/* 계산 기록 */
+.hsave{width:100%;padding:13px;background:var(--p);border:none;border-radius:var(--rs);color:#fff;font-family:var(--sans);font-size:13px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all .15s}
+.hsave:active{transform:scale(.98)}.hsave:disabled{opacity:.6}
+.hmsg{font-size:11px;color:var(--mu);margin-top:6px;min-height:16px}
+.hlist{display:flex;flex-direction:column;gap:7px;margin-top:10px}
+.hitem{display:flex;align-items:center;gap:9px;padding:10px 11px;background:var(--card2);border:1px solid var(--bd);border-radius:var(--rs);cursor:pointer;-webkit-tap-highlight-color:transparent}
+.hitem:active{background:var(--pp)}
+.hitem .hd{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.hitem .hb{flex:1;min-width:0}
+.hitem .hm{font-size:12px;font-weight:700;font-family:var(--mono)}
+.hitem .hs2{font-size:10px;color:var(--mu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hitem .hx{border:none;background:none;color:var(--mu2);font-size:18px;padding:0 4px;cursor:pointer}
 </style>
 </head>
 <body>
@@ -283,8 +297,8 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.1)}
       </div>
       <div class="hint">
         · 원리금균등: PMT(r,n,PV) × 12 — 매달 동일<br>
-        · 원금균등: (PV/n + PV×r) × 12 — <b>첫달 최대값으로 DSR 산정</b><br>
-        · 만기일시: PV × 연금리 — 이자만 상환<br>
+        · 원금균등: 향후 1년간 실제 상환액(원금 12회분 + 감소잔액 이자)<br>
+        · 만기일시: PV ÷ min(기간,10년) + PV × 연금리 — <b>원금도 최대 10년 분할로 간주</b><br>
         · 체증식: 초회납입액 × 12 — 보금자리론 등 정책대출
       </div>
     </div>
@@ -293,13 +307,15 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.1)}
       <div class="fl" style="margin-bottom:9px">금리 유형 · 지역 (스트레스DSR)</div>
       <div class="pills" id="stype">
         <div class="pill sel" data-stress="3.00" data-mult="1.0" data-key="수도권·규제 변동" onclick="sp(this,'stype')">수도권·규제 변동</div>
-        <div class="pill"     data-stress="3.00" data-mult="0.5" data-key="수도권·규제 혼합" onclick="sp(this,'stype')">수도권·규제 혼합</div>
+        <div class="pill"     data-stress="3.00" data-mult="0.8" data-key="수도권·규제 혼합" onclick="sp(this,'stype')">수도권·규제 혼합</div>
+        <div class="pill"     data-stress="3.00" data-mult="0.4" data-key="수도권·규제 주기형" onclick="sp(this,'stype')">수도권·규제 주기형</div>
         <div class="pill"     data-stress="0.00" data-mult="0.0" data-key="수도권·규제 고정" onclick="sp(this,'stype')">수도권·규제 고정</div>
         <div class="pill"     data-stress="0.75" data-mult="1.0" data-key="지방 변동" onclick="sp(this,'stype')">지방 변동</div>
-        <div class="pill"     data-stress="0.75" data-mult="0.5" data-key="지방 혼합"  onclick="sp(this,'stype')">지방 혼합</div>
+        <div class="pill"     data-stress="0.75" data-mult="0.8" data-key="지방 혼합"  onclick="sp(this,'stype')">지방 혼합</div>
+        <div class="pill"     data-stress="0.75" data-mult="0.4" data-key="지방 주기형" onclick="sp(this,'stype')">지방 주기형</div>
         <div class="pill"     data-stress="0.00" data-mult="0.0" data-key="지방 고정"  onclick="sp(this,'stype')">지방 고정</div>
       </div>
-      <div class="hint" id="stress-hint">스트레스금리 공시(2025.12): 수도권·규제 하한 <b>3.00%</b> · 지방 <b>0.75%</b> 유예(~2026.6.30)</div>
+      <div class="hint" id="stress-hint">스트레스금리 공시(2025.12): 수도권·규제 하한 <b>3.00%</b> · 지방 <b>0.75%</b> 유예(~2026.12.31) · 반영비율 변동 100% / 혼합 80% / 주기형 40%</div>
     </div>
 
     <div class="fld">
@@ -322,6 +338,7 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.1)}
       <div class="add-btn" onclick="addLoan('cr')">+ 신용대출</div>
       <div class="add-btn" onclick="addLoan('mn')">+ 마이너스통장</div>
       <div class="add-btn" onclick="addLoan('cd')">+ 카드론</div>
+      <div class="add-btn" onclick="addLoan('mid')">+ 중도금·이주비</div>
     </div>
   </div>
 </div>
@@ -368,21 +385,36 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.1)}
   </div>
 </div>
 
+<!-- ⑧ 계산 기록 -->
+<div class="sec">
+  <div class="sch open" onclick="tog(this)">
+    <div class="st"><span class="step-badge">8</span>계산 기록 <span style="font-size:11px;color:var(--mu);font-weight:400;margin-left:4px">최근 10개</span></div><span class="sa">▼</span>
+  </div>
+  <div class="scb open">
+    <button class="hsave" id="h-save" onclick="saveHistory()">현재 조건 저장</button>
+    <div class="hmsg" id="h-msg"></div>
+    <div class="hlist" id="h-list"></div>
+    <div class="hint">이 기기(브라우저)에서 저장한 기록만 보이며, 최근 10개까지 보관됩니다. 기록을 누르면 그 조건으로 다시 계산합니다.</div>
+  </div>
+</div>
+
 <script>
 'use strict';
 /* ══════════════════════════════════════════════════════════════
-   검산 완료된 공식 (2026.09 기준 · 부동산계산기.com 동일)
+   부채 산정 공식 (부동산계산기.com · 금융위 DSR 산정 기준)
    
    [DSR] = (모든대출 연원리금합계) / 인정소득 × 100
    [DTI] = (주담대 연원리금 + 기타대출 연이자만) / 인정소득 × 100
    
    상품별 연원리금:
      주담대 원리금균등: PMT(실금리/12, n×12, 잔액) × 12
-     주담대 원금균등:   (잔액/n/12 + 잔액×실금리/12) × 12  ← 첫달기준
-     주담대 만기일시:   잔액 × 실금리
+     주담대 원금균등:   향후 12개월 실제 상환액 (원금 12회분 + 감소잔액 이자)
+     주담대 만기일시:   잔액 ÷ min(만기,10년) + 잔액 × 실금리
      주담대 체증식:     초회납입액 × 12
-     신용대출:         PMT(실금리/12, min(잔여만기,10)×12, 잔액) × 12
-     마이너스통장:      약정한도 × 4%  (금감원 고시, 금리무관)
+     신용대출 분할:     PMT(실금리/12, min(잔여만기,10)×12, 잔액) × 12
+     신용대출 일시:     잔액 ÷ 5년 + 잔액 × 실금리
+     마이너스통장:      약정한도 ÷ 5년 + 약정한도 × 금리  (한도 전액 기준)
+     중도금·이주비:     대출총액 ÷ 25년 + 대출총액 × 금리
      카드론:           PMT(금리/12, 잔여만기×12, 잔액) × 12
    
    스트레스DSR:
@@ -418,8 +450,9 @@ const TYPES = {
   cr: { name:'신용대출',    tag:'t-cr',  color:'#8b5cf6', dot:'#ede9fe' },
   mn: { name:'마이너스통장',tag:'t-mn',  color:'#0ea5e9', dot:'#e0f2fe' },
   cd: { name:'카드론',      tag:'t-cd',  color:'#ec4899', dot:'#fce7f3' },
+  mid:{ name:'중도금·이주비',tag:'t-mid', color:'#f59e0b', dot:'#fef3c7' },
 };
-const DEF = { jd:[30000,4.0,20], cr:[3000,5.0,3], mn:[5000,0,0], cd:[500,15.0,1] };
+const DEF = { jd:[30000,4.0,20], cr:[3000,5.0,3], mn:[5000,6.0,0], cd:[500,15.0,1], mid:[20000,4.5,0] };
 
 function addLoan(type) {
   const [a,r,t] = DEF[type];
@@ -441,7 +474,7 @@ function renderLoans() {
   const el = document.getElementById('loan-list');
   el.innerHTML = loans.map(l => {
     const T = TYPES[l.type];
-    const isMN = l.type==='mn';
+    const isMN = l.type==='mn' || l.type==='mid';
     return `<div class="loan-card" id="lc-${l.id}">
       <div class="lc-head">
         <span class="lc-tag ${T.tag}">${T.name}</span>
@@ -449,11 +482,14 @@ function renderLoans() {
         <button class="del-btn" onclick="delLoan(${l.id})">×</button>
       </div>
       ${isMN ? `
-      <div class="lr">
-        <div class="lf"><div class="ll">약정 한도 (만원)</div>
+      <div class="lr triple">
+        <div class="lf"><div class="ll">${l.type==='mn'?'약정 한도':'대출총액'} (만원)</div>
           <input class="linput" type="number" value="${l.amt}" min="100" step="100"
             oninput="upLoan(${l.id},'amt',this.value)">
-          <div class="lu">한도 × 4% 고정 (금감원)</div></div>
+          <div class="lu">${l.type==='mn'?'한도 ÷ 5년 + 이자':'총액 ÷ 25년 + 이자'}</div></div>
+        <div class="lf"><div class="ll">금리 (%)</div>
+          <input class="linput" type="number" value="${l.rate}" min="0" max="30" step="0.1"
+            oninput="upLoan(${l.id},'rate',this.value)"></div>
         <div class="lf"><div class="ll">DSR 기여 (만원/년)</div>
           <div style="font-family:var(--mono);font-size:14px;padding:10px;background:var(--pp);border-radius:var(--rs);color:var(--p2);font-weight:600" id="mn-ann-${l.id}">—</div>
         </div>
@@ -468,13 +504,13 @@ function renderLoans() {
         <div class="lf"><div class="ll">잔여기간 (년)</div>
           <input class="linput" type="number" value="${l.term}" min="0.5" max="${l.type==='cr'?10:l.type==='cd'?5:40}" step="${l.type==='jd'?1:0.5}"
             oninput="upLoan(${l.id},'term',this.value)">
-          <div class="lu">${l.type==='cr'?'신용: max 10년 적용':l.type==='cd'?'카드론: 실 잔여만기':'주담대: 실 잔여기간'}</div></div>
+          <div class="lu">${l.type==='cr'?(l.repay==='bullet'?'일시상환: 5년 간주':'분할: max 10년 적용'):l.type==='cd'?'카드론: 실 잔여만기':'주담대: 실 잔여기간'}</div></div>
       </div>
-      ${l.type==='jd' ? `<div style="margin-top:-4px;margin-bottom:8px">
+      ${l.type==='jd'||l.type==='cr' ? `<div style="margin-top:-4px;margin-bottom:8px">
         <div class="ll" style="font-size:11px;color:var(--mu);margin-bottom:4px;font-weight:600">상환방식</div>
         <div class="pills" style="gap:6px" id="repay-${l.id}">
-          ${['equal','principal','bullet'].map(v=>`<div class="pill${l.repay===v?' sel':''}" style="padding:5px 10px;font-size:11px" 
-            onclick="upLoan(${l.id},'repay','${v}');this.parentNode.querySelectorAll('.pill').forEach(p=>p.classList.remove('sel'));this.classList.add('sel')">${v==='equal'?'원리금균등':v==='principal'?'원금균등':'만기일시'}</div>`).join('')}
+          ${(l.type==='cr'?['equal','bullet']:['equal','principal','bullet']).map(v=>`<div class="pill${l.repay===v?' sel':''}" style="padding:5px 10px;font-size:11px" 
+            onclick="upLoan(${l.id},'repay','${v}');renderLoans();calc()">${v==='equal'?(l.type==='cr'?'분할상환':'원리금균등'):v==='principal'?'원금균등':'만기일시'}</div>`).join('')}
         </div></div>` : ''}
       `}
     </div>`;
@@ -482,30 +518,40 @@ function renderLoans() {
 }
 
 /* ────────────────── 대출 연상환 계산 ────────────────── */
+/* 원금 1단위당 연간 DSR 상환액 (모든 상환방식이 원금에 비례) */
+function annFactor(rate, years, repay) {
+  if (repay==='equal') return pmt(rate, years, 1) * 12;
+  if (repay==='principal') { // 향후 12개월 실제 상환액
+    const n = Math.max(1, Math.round(years*12)), m = Math.min(12, n), r = rate/100/12;
+    return m/n + r * (m - m*(m-1)/(2*n));
+  }
+  if (repay==='bullet') return 1/Math.min(Math.max(years,0.5),10) + rate/100; // 원금 ÷ min(만기,10년)
+  return rate/100; // deferred(체증식): 초회 이자 기준
+}
+
 function loanDSR(l) {
-  /* 마이너스통장: 한도 × 4% (금감원, 금리무관) */
-  if (l.type==='mn') return { dsr: l.amt * 0.04, dti: l.amt * 0.04 };
-  /* 신용대출: 원리금균등, min(실만기,10년) */
+  const intOnly = l.amt * l.rate / 100; // DTI용 이자만
+  /* 마이너스통장: 한도 전액을 5년 일시상환 신용대출로 간주 */
+  if (l.type==='mn') return { dsr: l.amt/5 + intOnly, dti: intOnly };
+  /* 중도금·이주비: 총액 ÷ 25년 + 이자 (주담대 분류 → DTI도 원리금) */
+  if (l.type==='mid') { const ann = l.amt/25 + intOnly; return { dsr: ann, dti: ann }; }
+  /* 신용대출: 분할 = 원리금균등 min(실만기,10년) / 일시 = 5년 간주 */
   if (l.type==='cr') {
+    if (l.repay==='bullet') return { dsr: l.amt/5 + intOnly, dti: intOnly };
     const y = Math.min(Math.max(+l.term||1, 0.5), 10);
     const ann = pmt(l.rate, y, l.amt) * 12;
-    const intOnly = l.amt * l.rate / 100; // DTI용 이자만
     return { dsr: ann, dti: intOnly };
   }
   /* 카드론: 원리금균등, 실 잔여만기 */
   if (l.type==='cd') {
     const y = Math.max(+l.term||1, 0.5);
     const ann = pmt(l.rate, y, l.amt) * 12;
-    const intOnly = l.amt * l.rate / 100;
     return { dsr: ann, dti: intOnly };
   }
   /* 기존 주담대 */
   if (l.type==='jd') {
     const y = Math.max(+l.term||1, 0.5);
-    let ann;
-    if (l.repay==='equal')     ann = pmt(l.rate, y, l.amt) * 12;
-    else if (l.repay==='principal') ann = (l.amt/(y*12) + l.amt*l.rate/100/12) * 12;
-    else                        ann = l.amt * l.rate / 100;
+    const ann = l.amt * annFactor(l.rate, y, l.repay);
     return { dsr: ann, dti: ann }; // 주담대는 DSR=DTI (원리금 그대로)
   }
   return { dsr:0, dti:0 };
@@ -513,39 +559,17 @@ function loanDSR(l) {
 
 /* ────────────────── 신규 주담대 연상환 ────────────────── */
 function newLoanAnn(amt, rate, stressRate, years, repay) {
-  const effRate = rate + stressRate; // 스트레스 심사금리 (한도산정용)
-  let dsrAnn, realAnn, firstMonthReal, firstMonthStress;
-
-  if (repay==='equal') {
-    realAnn  = pmt(rate,    years, amt) * 12;
-    dsrAnn   = pmt(effRate, years, amt) * 12; // 스트레스 기준 DSR 산입
-  } else if (repay==='principal') {
-    // 첫달 기준 × 12 (스트레스 금리 적용)
-    realAnn  = (amt/(years*12) + amt*rate/100/12)    * 12;
-    dsrAnn   = (amt/(years*12) + amt*effRate/100/12) * 12;
-  } else if (repay==='bullet') {
-    realAnn  = amt * rate / 100;
-    dsrAnn   = amt * effRate / 100;
-  } else { // deferred(체증식): 초회납입 ≒ 만기일시 이자 (보수적)
-    realAnn  = amt * rate / 100;
-    dsrAnn   = amt * effRate / 100;
-  }
-  return { dsrAnn, realAnn };
+  return {
+    dsrAnn:  amt * annFactor(rate + stressRate, years, repay), // 스트레스 심사금리 (한도산정용)
+    realAnn: amt * annFactor(rate, years, repay),              // 실금리 실납부
+  };
 }
 
 /* ────────────────── 최대 한도 역산 ────────────────── */
 function calcMaxLoan(budgetAnn, existDSRAnn, rate, stressRate, years, repay) {
   const avail = Math.max(0, budgetAnn - existDSRAnn);
-  const availMon = avail / 12;
-  const eff = rate + stressRate;
-
-  if (repay==='equal') return maxPV(availMon, eff, years);
-  if (repay==='principal') {
-    const r = eff/100/12, n = years*12;
-    return r+1/n > 0 ? availMon/(1/n+r) : 0;
-  }
-  if (repay==='bullet') return eff>0 ? avail/(eff/100) : 0;
-  return eff>0 ? avail/(eff/100) : 0; // 체증식 ≒ 만기일시
+  const f = annFactor(rate + stressRate, years, repay);
+  return f > 0 ? avail / f : 0;
 }
 
 /* ────────────────── 메인 계산 ────────────────── */
@@ -578,10 +602,10 @@ function calc() {
     const res = loanDSR(l);
     existDSR += res.dsr;
     existDTI += res.dti;
-    if (l.type==='jd') existDTI_jd += res.dti; // 기존 주담대는 원리금
+    if (l.type==='jd'||l.type==='mid') existDTI_jd += res.dti; // 기존 주담대는 원리금
 
     // 카드 표시
-    if (l.type==='mn') {
+    if (l.type==='mn'||l.type==='mid') {
       const el=document.getElementById(`mn-ann-${l.id}`);
       if(el) el.textContent=fmt(res.dsr)+'만원/년';
       const lr=document.getElementById(`lr-${l.id}`);
@@ -606,10 +630,11 @@ function calc() {
   const budget = income * dsrLim / 100;
   const room   = budget - totalDSR;
   const maxLoan = calcMaxLoan(budget, existDSR, rate, stress, years, repay);
-  const maxLoanRealMon = maxLoan>0 ? (repay==='equal'?pmt(rate,years,maxLoan):repay==='principal'?(maxLoan/(years*12)+maxLoan*rate/100/12):maxLoan*rate/100/12) : 0;
+  const maxLoanRealMon = maxLoan * annFactor(rate, years, repay) / 12;
 
   // Verdict
   const status = dsr>dsrLim?'no':dsr>dsrLim-5?'warn':'ok';
+  lastResult = { dsr: round2(dsr), dti: round2(dti), status };
   const SC={ok:'var(--gn)',warn:'var(--am)',no:'var(--rd)'};
   const SL={ok:`대출 가능 — DSR ${fd(dsr)}% (한도 ${dsrLim}% 이내)`, warn:`DSR 한도 근접 — ${fd(dsr)}% / ${dsrLim}%`, no:`DSR 한도 초과 — ${fd(dsr)}% (한도 ${dsrLim}%)`};
   document.getElementById('hero').style.setProperty('--hc', SC[status]);
@@ -631,7 +656,7 @@ function calc() {
   if (newDSR>0) segs.push({cls:'gauge-seg jd',color:'#00a19b',label:'신규주담대',val:newDSR,w:toWidth(newDSR)});
   loans.forEach(l=>{
     const {dsr:v}=loanDSR(l);
-    if(v>0) segs.push({cls:'gauge-seg '+{jd:'jd',cr:'cr',mn:'mn',cd:'cd'}[l.type], color:TYPES[l.type].color, label:TYPES[l.type].name, val:v, w:toWidth(v)});
+    if(v>0) segs.push({cls:'gauge-seg '+l.type, color:TYPES[l.type].color, label:TYPES[l.type].name, val:v, w:toWidth(v)});
   });
   // 100% 초과 시 전체 cap (이미 toWidth에서 처리됨)
 
@@ -694,9 +719,9 @@ function calc() {
     loans.forEach(l=>{
       const {dsr:v,dti:d}=loanDSR(l);
       const T=TYPES[l.type];
-      let desc=l.type==='mn'?`한도 ${fw(l.amt)} × 4%`:`${fw(l.amt)} / ${fd(l.rate)}% / ${l.term}년`;
+      let desc=l.type==='mn'?`한도 ${fw(l.amt)} ÷ 5년 + ${fd(l.rate)}%`:l.type==='mid'?`${fw(l.amt)} ÷ 25년 + ${fd(l.rate)}%`:l.type==='cr'&&l.repay==='bullet'?`${fw(l.amt)} / ${fd(l.rate)}% / 일시 5년`:`${fw(l.amt)} / ${fd(l.rate)}% / ${l.term}년`;
       rows+=`<tr class="sub"><td>&nbsp;&nbsp;${T.name} (${desc})</td><td>DSR ${fmt(v)}만</td></tr>`;
-      if(l.type==='cr'||l.type==='cd'){
+      if(l.type==='cr'||l.type==='cd'||l.type==='mn'){
         rows+=`<tr class="sub"><td>&nbsp;&nbsp;&nbsp;&nbsp;DTI 이자만 (원금 제외)</td><td style="color:var(--am)">${fmt(d)}만원</td></tr>`;
       }
     });
@@ -748,19 +773,23 @@ function buildVerify(income, incRaw, imult, dsrLim, amt, rate, stress, years, re
     }
   } else if(repay==='principal'){
     const firstPrin = amt/(years*12);
-    const firstInt  = amt*r;
-    const firstIntS = amt*rs;
-    lines.push(` 원금균등: 첫달 기준 × 12`);
-    lines.push(` 첫달원금 = ${fd(amt)}÷${n} = ${fd(firstPrin,2)}만원`);
-    lines.push(` 첫달이자(실금리) = ${fd(amt)}×${fd(r,6)} = ${fd(firstInt,2)}만원`);
-    lines.push(` \x1b[32m실금리 연상환 = (${fd(firstPrin,2)}+${fd(firstInt,2)})×12 = ${fd(newReal,2)}만원\x1b[0m`);
+    const m = Math.min(12, n);
+    lines.push(` 원금균등: 향후 ${m}개월 실제 상환액`);
+    lines.push(` 1년 원금 = ${fd(amt)}÷${n}×${m} = ${fd(firstPrin*m,2)}만원`);
+    lines.push(` 1년 이자(실금리) = 감소잔액 × ${fd(r,6)} 합계 = ${fd(newReal-firstPrin*m,2)}만원`);
+    lines.push(` \x1b[32m실금리 연상환 = ${fd(newReal,2)}만원\x1b[0m`);
     if(stress>0){
-      lines.push(` 첫달이자(스트레스금리) = ${fd(amt)}×${fd(rs,6)} = ${fd(firstIntS,2)}만원`);
-      lines.push(` \x1b[33mDSR 산입(스트레스) = (${fd(firstPrin,2)}+${fd(firstIntS,2)})×12 = ${fd(newDSR,2)}만원\x1b[0m`);
+      lines.push(` 1년 이자(스트레스금리) = 감소잔액 × ${fd(rs,6)} 합계 = ${fd(newDSR-firstPrin*m,2)}만원`);
+      lines.push(` \x1b[33mDSR 산입(스트레스) = ${fd(newDSR,2)}만원\x1b[0m`);
     }
+  } else if(repay==='bullet'){
+    const yb = Math.min(years,10);
+    lines.push(` 만기일시: 원금 ÷ min(${years}년,10년) + 이자`);
+    lines.push(` \x1b[32m실금리 연상환 = ${fd(amt)}÷${yb} + ${fd(amt)}×${fd(rate)}% = ${fd(newReal,2)}만원\x1b[0m`);
+    if(stress>0) lines.push(` \x1b[33mDSR산입 = ${fd(amt)}÷${yb} + ${fd(amt)}×${fd(eff)}% = ${fd(newDSR,2)}만원\x1b[0m`);
   } else {
-    lines.push(` 만기일시: 이자만 납부`);
-    lines.push(` \x1b[32m실금리 연이자 = ${fd(amt)} × ${fd(rate)}% = ${fd(newReal,2)}만원\x1b[0m`);
+    lines.push(` 체증식: 초회 이자 기준`);
+    lines.push(` \x1b[32m실금리 연상환 = ${fd(amt)} × ${fd(rate)}% = ${fd(newReal,2)}만원\x1b[0m`);
     if(stress>0) lines.push(` \x1b[33mDSR산입 = ${fd(amt)} × ${fd(eff)}% = ${fd(newDSR,2)}만원\x1b[0m`);
   }
 
@@ -770,7 +799,11 @@ function buildVerify(income, incRaw, imult, dsrLim, amt, rate, stress, years, re
       const {dsr:v,dti:d}=loanDSR(l);
       const T=TYPES[l.type];
       if(l.type==='mn'){
-        lines.push(` ${T.name}: ${fw(l.amt)} × 4% = ${fd(v,2)}만원/년`);
+        lines.push(` ${T.name}: ${fw(l.amt)}÷5 + ${fw(l.amt)}×${fd(l.rate)}% = ${fd(v,2)}만원/년`);
+      } else if(l.type==='mid'){
+        lines.push(` ${T.name}: ${fw(l.amt)}÷25 + ${fw(l.amt)}×${fd(l.rate)}% = ${fd(v,2)}만원/년`);
+      } else if(l.type==='cr'&&l.repay==='bullet'){
+        lines.push(` ${T.name}(일시): ${fw(l.amt)}÷5 + ${fw(l.amt)}×${fd(l.rate)}% = ${fd(v,2)}만/년`);
       } else if(l.type==='cr'){
         const y=Math.min(Math.max(+l.term||1,0.5),10);
         lines.push(` ${T.name}(${fw(l.amt)}/${fd(l.rate)}%/${y}년): PMT → ${fd(v,2)}만/년`);
@@ -841,7 +874,102 @@ function sp(el,gid) {
 }
 function tog(hd) { hd.classList.toggle('open'); hd.nextElementSibling.classList.toggle('open'); }
 
-renderLoans(); calc();
+/* ────────────────── 계산 기록 (Supabase) ────────────────── */
+const SB_URL = 'https://wkssyjuihhpwxroocats.supabase.co';
+const SB_KEY = 'sb_publishable_kdKUnCCy1gQ1rau3cwFPzg_SkGAeg9C';
+let lastResult = null;
+
+function deviceId() {
+  let id = null;
+  try { id = localStorage.getItem('dsr-device-id'); } catch(e) {}
+  if (!id) {
+    id = crypto.randomUUID();
+    try { localStorage.setItem('dsr-device-id', id); } catch(e) {}
+  }
+  return id;
+}
+const DEVICE = deviceId();
+
+async function rpc(fn, args) {
+  const res = await fetch(`${SB_URL}/rest/v1/rpc/${fn}`, {
+    method:'POST',
+    headers:{ apikey:SB_KEY, 'Content-Type':'application/json' },
+    body: JSON.stringify(args),
+  });
+  if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
+  return res.status===204 ? null : res.json();
+}
+
+const selVal = gid => document.querySelector('#'+gid+' .sel').dataset;
+function getInputs() {
+  return {
+    income: +document.getElementById('income').value,
+    itype:  selVal('itype').val,
+    dsrlim: selVal('dsrlim').val,
+    hown:   selVal('hown').val,
+    term:   +document.getElementById('new-term').value,
+    rate:   +document.getElementById('new-rate').value,
+    repay:  selVal('new-repay').val,
+    stype:  selVal('stype').key,
+    amt:    +document.getElementById('new-amt').value,
+    loans:  loans.map(({type,amt,rate,term,repay})=>({type,amt,rate,term,repay})),
+  };
+}
+function setPill(gid, attr, v) {
+  const el = [...document.querySelectorAll('#'+gid+' .pill')].find(p=>p.dataset[attr]===String(v));
+  if (!el) return;
+  document.querySelectorAll('#'+gid+' .pill').forEach(p=>p.classList.remove('sel'));
+  el.classList.add('sel');
+}
+function applyInputs(i) {
+  document.getElementById('income').value   = i.income;
+  document.getElementById('new-term').value = i.term;
+  document.getElementById('new-rate').value = i.rate;
+  document.getElementById('new-amt').value  = i.amt;
+  setPill('itype','val',i.itype); setPill('dsrlim','val',i.dsrlim); setPill('hown','val',i.hown);
+  setPill('new-repay','val',i.repay); setPill('stype','key',i.stype);
+  loans = (i.loans||[]).map(l=>({ id:++lid, ...l }));
+  renderLoans(); calc();
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+let histRows = [];
+const histMsg = t => { document.getElementById('h-msg').textContent = t; };
+function renderHistory() {
+  const SC={ok:'var(--gn)',warn:'var(--am)',no:'var(--rd)'};
+  document.getElementById('h-list').innerHTML = histRows.length ? histRows.map((r,k) => {
+    const i = r.inputs, d = new Date(r.created_at);
+    const when = `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    return `<div class="hitem" onclick="applyInputs(histRows[${k}].inputs)">
+      <span class="hd" style="background:${SC[r.status]}"></span>
+      <div class="hb">
+        <div class="hm">DSR ${fd(r.dsr)}% · DTI ${fd(r.dti)}%</div>
+        <div class="hs2">${when} · 소득 ${fw(i.income)} · 대출 ${fw(i.amt)} · ${fd(i.rate)}% ${i.term}년${i.loans.length?` · 기존 ${i.loans.length}건`:''}</div>
+      </div>
+      <button class="hx" onclick="event.stopPropagation();delHistory(${r.id})" aria-label="삭제">×</button>
+    </div>`;
+  }).join('') : '<div class="hint" style="margin-top:0">저장된 기록이 없습니다.</div>';
+}
+async function loadHistory() {
+  try { histRows = await rpc('dsr_history_list', { p_device: DEVICE }) || []; renderHistory(); }
+  catch(e) { histMsg('기록을 불러오지 못했습니다.'); console.error(e); }
+}
+async function saveHistory() {
+  if (!lastResult) return;
+  const btn = document.getElementById('h-save');
+  btn.disabled = true; histMsg('저장 중…');
+  try {
+    await rpc('dsr_history_save', { p_device: DEVICE, p_inputs: getInputs(), p_dsr: lastResult.dsr, p_dti: lastResult.dti, p_status: lastResult.status });
+    histMsg('저장했습니다 ✓'); await loadHistory();
+  } catch(e) { histMsg('저장에 실패했습니다. 잠시 후 다시 시도해 주세요.'); console.error(e); }
+  btn.disabled = false;
+}
+async function delHistory(id) {
+  try { await rpc('dsr_history_delete', { p_device: DEVICE, p_id: id }); histRows = histRows.filter(r=>r.id!==id); renderHistory(); histMsg(''); }
+  catch(e) { histMsg('삭제에 실패했습니다.'); console.error(e); }
+}
+
+renderLoans(); calc(); loadHistory();
 </script>
 </body>
 </html>
