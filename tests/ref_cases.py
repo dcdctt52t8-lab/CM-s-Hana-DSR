@@ -34,7 +34,7 @@ STYPE = {'수도권·규제 변동':(3,1),'수도권·규제 혼합':(3,.8),'수
          '지방 변동':(.75,1),'지방 혼합':(.75,.8),'지방 주기형':(.75,.4),'지방 고정':(0,0)}
 cases = []
 for k in range(50):
-    c = dict(income=random.randrange(2000, 25001, 100), itype=random.choice(['1.00','0.90','0.70','0.50']),
+    c = dict(income=random.randrange(2000, 25001, 100), itype=random.choice(['1.00','0.90','0.60','0.50']),
              dsrlim=random.choice(['40','50','60']), term=random.randint(5,40),
              rate=round(random.randrange(200, 801, 5)/100, 2), repay=random.choice(['equal','principal','bullet','deferred']),
              stype=random.choice(list(STYPE)), amt=random.randrange(5000, 150001, 1000), loans=[])
